@@ -154,6 +154,804 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-上传微信二维码" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/08/10/%E4%B8%8A%E4%BC%A0%E5%BE%AE%E4%BF%A1%E4%BA%8C%E7%BB%B4%E7%A0%81/">上传微信二维码</a>
+    </h1>
+  
+
+        
+        <a href="/2020/08/10/%E4%B8%8A%E4%BC%A0%E5%BE%AE%E4%BF%A1%E4%BA%8C%E7%BB%B4%E7%A0%81/" class="archive-article-date">
+  	<time datetime="2020-08-10T13:41:53.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-08-10</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <pre><code>   /// &lt;summary&gt;
+/// 上传微信二维码
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;session&quot;&gt;&lt;/param&gt;
+    /// &lt;param name=&quot;files&quot;&gt;&lt;/param&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    public virtual IResult UploadWeChartQRCode([Session]Arg&lt;Session&gt; session, [Logger(LoggerType.All, false)][Size2(Max = 1)][Business.Attributes.HttpFile]Arg&lt;Dictionary&lt;string, byte[]&gt;&gt; files)
+    {
+        try
+        {</code></pre><p>#if DEBUG<br>                #region 测试用<br>                //读取本地excel<br>                string path = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, “5.jpg”);<br>                var fileStream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite);<br>                // 转字节流<br>                byte[] bytes = new byte[fileStream.Length];<br>                fileStream.Read(bytes, 0, bytes.Length);<br>                fileStream.Close();<br>                // 调用接口<br>                Dictionary&lt;string, byte[]&gt; dicFile = new Dictionary&lt;string, byte[]&gt;();<br>                dicFile.Add(“123”, bytes);<br>                files.Out = dicFile;<br>                #endregion<br>#endif</p>
+<pre><code>string content = &quot;&quot;;
+if (files.Out == null)
+{
+    return this.ResultCreate(-110, &quot;files为空,文件未上传&quot;);
+}
+using (var con = Utility.OnlyDB.GetConnection())
+{
+    foreach (var file in files.Out)
+    {
+        var dirPath = con.Entity.SysConfig.Where(c =&gt; c.source == session.Out.Source &amp;&amp; c.type == SysConfig.TypeEnum.网站配置 &amp;&amp; c.name == SysConfig.SiteSetEnum.SourceUrl.GetName()).Select(c =&gt; c.value).FirstOrDefault();//存储路径
+        dirPath += &quot;/&quot; + ImgFilePathEnum.WeChatORCode.GetName();
+        //如果没有此文件夹，则新建
+        if (!Directory.Exists(dirPath))
+        {
+            Directory.CreateDirectory(dirPath);
+        }
+        string filename = session.Out.Source + &quot;_&quot; + session.Out.Account + &quot;.jpg&quot;;
+        var fileUrl = System.IO.Path.Combine(dirPath, filename);
+        //此处需要保存原件，不做任何处理
+        System.IO.File.WriteAllBytes(fileUrl, file.Value);
+        if (!System.IO.File.Exists(fileUrl))
+        {
+            return this.ResultCreate(-21, &quot;文件上传失败&quot;);
+        }
+        con.BeginTransaction(); </code></pre><p>#if WIN<br>                        string pathHttp = con.Entity.SysConfig.Where(c =&gt; c.source == session.Out.Source &amp;&amp; c.type == SysConfig.TypeEnum.网站配置 &amp;&amp; c.name == SysConfig.SiteSetEnum.SourceWebUrl.GetName()).Select(c =&gt; c.value).FirstOrDefault().TrimEnd(‘/‘);<br>                        var host = string.Format(“{0}/“, pathHttp.TrimEnd(‘/‘));<br>#else<br>                        var host = “<a href="http://192.168.6.75:8090/&quot;" target="_blank" rel="noopener">http://192.168.6.75:8090/&quot;</a>;<br>#endif<br>                        content = new Uri(System.IO.Path.Combine(host, ImgFilePathEnum.WeChatORCode.GetName(), “”, filename)).AbsoluteUri;<br>                        var accountCount = con.Entity.Member.Where(s =&gt; s.source == session.Out.Source &amp;&amp; s.account == session.Out.Account).Count();<br>                        if (accountCount &gt; 0)<br>                        {<br>                            con.Entity.Member.Where(s =&gt; s.source == session.Out.Source &amp;&amp; s.account == session.Out.Account).Set(a =&gt; a.wechatqrcode, content).Update();<br>                        }<br>                        con.Commit();<br>                    }<br>                }<br>                return this.ResultCreate(content);<br>            }<br>            catch (Exception ex)<br>            {<br>                return this.ResultCreate(-110, ex.Message);<br>            }</p>
+<pre><code>}
+
+/// &lt;summary&gt;
+/// 修改微信二维码是否显示
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;session&quot;&gt;&lt;/param&gt;
+/// &lt;param name=&quot;&quot;&gt;&lt;/param&gt;
+/// &lt;returns&gt;&lt;/returns&gt;
+public virtual IResult SetWeChatQRCodeState([Session]Arg&lt;Session&gt; session)
+{
+    try
+    {
+        using (var con = Utility.OnlyDB.GetConnection())
+        {
+            con.Entity.Member.Where(s =&gt; s.source == session.Out.Source &amp;&amp; s.account == session.Out.Account).Set(s =&gt; s.wechatqrcode, &quot;1&quot;).Update();
+            return this.ResultCreate();
+        }
+    }
+    catch (Exception ex)
+    {
+        return this.ResultCreate(-110, ex.Message);
+    }
+}</code></pre>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">C#b笔记</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2020/08/10/%E4%B8%8A%E4%BC%A0%E5%BE%AE%E4%BF%A1%E4%BA%8C%E7%BB%B4%E7%A0%81/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-jPUSH（极光推送）" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/08/10/jPUSH%EF%BC%88%E6%9E%81%E5%85%89%E6%8E%A8%E9%80%81%EF%BC%89/">jPUSH（极光推送）</a>
+    </h1>
+  
+
+        
+        <a href="/2020/08/10/jPUSH%EF%BC%88%E6%9E%81%E5%85%89%E6%8E%A8%E9%80%81%EF%BC%89/" class="archive-article-date">
+  	<time datetime="2020-08-10T13:40:24.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-08-10</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>11:45</p>
+<p>��Ҫ���� jpush��sdk</p>
+<pre><code>/// &lt;summary&gt;
+///  ��Ϣ֪ͨ   ��̨ҳ�棬���ɵ���Ϣ
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;con&quot;&gt;&lt;/param&gt;
+/// &lt;param name=&quot;source&quot;&gt;&lt;/param&gt;
+/// &lt;param name=&quot;accountArray&quot;&gt;���Ͷ���  string[]&lt;/param&gt;
+/// &lt;param name=&quot;content&quot;&gt;��������&lt;/param&gt;
+/// &lt;param name=&quot;title&quot;&gt;���ͱ���&lt;/param&gt;
+/// &lt;param name=&quot;type&quot;&gt;Ĭ��Ϊ : Message.Type.ϵͳ��Ϣ&lt;/param&gt;
+/// &lt;param name=&quot;pushType&quot;&gt;��������:   ��Ϣ  ����   ֪ͨ&lt;/param&gt;
+/// &lt;returns&gt;Jiguang.JPush.Model.HttpResponse ����&lt;/returns&gt;
+public static Jiguang.JPush.Model.HttpResponse Jpush(DataConnection con, string source, string[] accountArray, string content, string title, Message.Type type, PushPayloadType pushType)
+{
+    if (type == Message.Type.ϵͳ��Ϣ) //��ϵͳ��Ϣ������
+    {
+        var configList = con.Entity.SysConfig.Where(s =&gt; s.source == source &amp;&amp; s.type == SysConfig.TypeEnum.��վ���� &amp;&amp; (
+         s.name == SysConfig.SiteSetEnum.Jpush_AppKey.GetName() || s.name == SysConfig.SiteSetEnum.Jpush_MasterSecret.GetName())).Select(s =&gt; new { s.name, s.value }).ToList();
+        string AppKey = configList.Where(s =&gt; s.name == SysConfig.SiteSetEnum.Jpush_AppKey.GetName()).Select(s =&gt; s.value).FirstOrDefault();
+        string MasterSecret = configList.Where(s =&gt; s.name == SysConfig.SiteSetEnum.Jpush_MasterSecret.GetName()).Select(s =&gt; s.value).FirstOrDefault();
+        Jiguang.JPush.JPushClient client = new Jiguang.JPush.JPushClient(AppKey, MasterSecret);
+        Jiguang.JPush.Model.HttpResponse response1 = client.GetCIdList(1, &quot;push&quot;);
+        var ContentData = JObject.Parse(response1.Content);
+        var CidList = ContentData[&quot;cidlist&quot;].ToList();
+        object ob = new object();
+        if (accountArray != null &amp;&amp; accountArray.Length &gt; 0)
+        {
+            Audience audience = new Audience();
+            audience.Tag = accountArray.ToList();
+            ob = audience;
+        }
+        else
+        {
+            ob = &quot;all&quot;;
+        }
+        if (pushType == PushPayloadType.Message)
+        {
+            PushPayload pushPayload = new PushPayload()
+            {
+                CId = CidList.Count &gt; 0 ? CidList[0].ToString() : &quot;&quot;,
+                Platform = &quot;all&quot;,
+                Audience = ob,
+                Message = new Jiguang.JPush.Model.Message
+                {
+                    Title = title,
+                    Content = content,
+                },
+                Options = new Options
+                {
+                    IsApnsProduction = true // ���� iOS ��������������������Ĭ��Ϊ����������
+                }
+            };
+            return client.SendPush(pushPayload);
+        }
+        else if (pushType == PushPayloadType.Notification)
+        {
+            PushPayload pushPayload = new PushPayload()
+            {
+                CId = CidList.Count &gt; 0 ? CidList[0].ToString() : &quot;&quot;,
+                Platform = &quot;all&quot;,
+                Audience = ob,
+                Notification = new Notification
+                {
+                    Alert = title,
+                    Android = new Android
+                    {
+                        Alert = content,
+                        Title = title,
+                        BuilderId = 3,
+                        Style = 1,
+                    },
+                    IOS = new IOS
+                    {
+                        Alert = title,
+                        ContentAvailable = true,
+                        Sound = &quot;ound.caf&quot;
+                    }
+                },
+                Options = new Options
+                {
+                    IsApnsProduction = true // ���� iOS ��������������������Ĭ��Ϊ����������
+                }
+            };
+            return client.SendPush(pushPayload);
+        }
+    }
+    return null;
+}</code></pre>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">C#�ʼ�</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2020/08/10/jPUSH%EF%BC%88%E6%9E%81%E5%85%89%E6%8E%A8%E9%80%81%EF%BC%89/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-DES-加密解密" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/08/10/DES-%E5%8A%A0%E5%AF%86%E8%A7%A3%E5%AF%86/">DES 加密解密</a>
+    </h1>
+  
+
+        
+        <a href="/2020/08/10/DES-%E5%8A%A0%E5%AF%86%E8%A7%A3%E5%AF%86/" class="archive-article-date">
+  	<time datetime="2020-08-10T13:39:33.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-08-10</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <pre><code> /// &lt;summary&gt;
+/// DES�����ַ���
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;encryptString&quot;&gt;�����ܵ��ַ���&lt;/param&gt;
+    /// &lt;param name=&quot;encryptKey&quot;&gt;������Կ,Ҫ��Ϊ8λ&lt;/param&gt;
+    /// &lt;returns&gt;���ܳɹ����ؼ��ܺ���ַ�����ʧ�ܷ���Դ��&lt;/returns&gt;
+    public static string EncryptDES(string encryptString, string key)
+    {
+        try
+        {
+            byte[] rgbKey = Encoding.UTF8.GetBytes(key);
+
+            //���ڶԳ��㷨�ĳ�ʼ��������Ĭ��ֵ����
+            byte[] rgbIV = { 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF };
+            byte[] inputByteArray = Encoding.UTF8.GetBytes(encryptString);
+            DESCryptoServiceProvider dCSP = new DESCryptoServiceProvider();
+            MemoryStream mStream = new MemoryStream();
+            CryptoStream cStream = new CryptoStream(mStream, dCSP.CreateEncryptor(rgbKey, rgbIV), CryptoStreamMode.Write);
+            cStream.Write(inputByteArray, 0, inputByteArray.Length);
+            cStream.FlushFinalBlock();
+            return Convert.ToBase64String(mStream.ToArray());
+        }
+        catch (Exception ex)
+        {
+            throw ex;
+        }
+    }
+
+    /// &lt;summary&gt;
+    /// DES�����ַ���
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;decryptString&quot;&gt;�����ܵ��ַ���&lt;/param&gt;
+    /// &lt;param name=&quot;key&quot;&gt;������Կ��Ҫ��8λ&lt;/param&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    public static string DecryptDES(string decryptString, string key)
+    {
+        try
+        {
+            //���ڶԳ��㷨�ĳ�ʼ��������Ĭ��ֵ��
+            byte[] Keys = { 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF };
+            byte[] rgbKey = Encoding.UTF8.GetBytes(key);
+            byte[] rgbIV = Keys;
+            byte[] inputByteArray = Convert.FromBase64String(decryptString);
+            DESCryptoServiceProvider DCSP = new DESCryptoServiceProvider();
+            MemoryStream mStream = new MemoryStream();
+            CryptoStream cStream = new CryptoStream(mStream, DCSP.CreateDecryptor(rgbKey, rgbIV), CryptoStreamMode.Write);
+            cStream.Write(inputByteArray, 0, inputByteArray.Length);
+            cStream.FlushFinalBlock();
+            return Encoding.UTF8.GetString(mStream.ToArray());
+        }
+        catch
+        {
+            return decryptString;
+        }
+    }</code></pre>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">c#�ʼ�</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2020/08/10/DES-%E5%8A%A0%E5%AF%86%E8%A7%A3%E5%AF%86/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-ASCII-码从小到大排序（字典序）" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/08/10/ASCII-%E7%A0%81%E4%BB%8E%E5%B0%8F%E5%88%B0%E5%A4%A7%E6%8E%92%E5%BA%8F%EF%BC%88%E5%AD%97%E5%85%B8%E5%BA%8F%EF%BC%89/">ASCII 码从小到大排序（字典序）</a>
+    </h1>
+  
+
+        
+        <a href="/2020/08/10/ASCII-%E7%A0%81%E4%BB%8E%E5%B0%8F%E5%88%B0%E5%A4%A7%E6%8E%92%E5%BA%8F%EF%BC%88%E5%AD%97%E5%85%B8%E5%BA%8F%EF%BC%89/" class="archive-article-date">
+  	<time datetime="2020-08-10T13:38:49.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-08-10</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <pre><code>   /// &lt;summary&gt;
+///  ASCII ���С���������ֵ���
+    /// &lt;/summary&gt;
+    /// &lt;param name=&quot;paramsMap&quot;&gt;&lt;/param&gt;
+    /// &lt;returns&gt;&lt;/returns&gt;
+    public static String getParamSrc(Dictionary&lt;string, string&gt; paramsMap)
+    {
+        var vDic = (from objDic in paramsMap orderby objDic.Key ascending select objDic);
+
+        StringBuilder str = new StringBuilder();
+        foreach (KeyValuePair&lt;string, string&gt; kv in vDic)
+        {
+            string pkey = kv.Key;
+            string pvalue = kv.Value;
+            str.Append(pkey + &quot;=&quot; + pvalue + &quot;&amp;&quot;);
+        }
+
+        String result = str.ToString().Substring(0, str.ToString().Length - 1);
+        return result;
+    }</code></pre>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">c#�ʼ�</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2020/08/10/ASCII-%E7%A0%81%E4%BB%8E%E5%B0%8F%E5%88%B0%E5%A4%A7%E6%8E%92%E5%BA%8F%EF%BC%88%E5%AD%97%E5%85%B8%E5%BA%8F%EF%BC%89/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-MD5" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/08/10/MD5/"> MD5</a>
+    </h1>
+  
+
+        
+        <a href="/2020/08/10/MD5/" class="archive-article-date">
+  	<time datetime="2020-08-10T13:37:30.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-08-10</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>��д16λ MD5</p>
+<pre><code>using System.Security.Cryptography;
+
+ /// &lt;summary&gt;
+   /// MD5 16λ���� ���ܺ�����Ϊ��д
+   /// &lt;/summary&gt;
+   /// &lt;param name=&quot;ConvertString&quot;&gt;&lt;/param&gt;
+   /// &lt;returns&gt;&lt;/returns&gt;
+   public static string GetStrMd5_16D(string ConvertString)
+   {
+       MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider();
+       string t2 = BitConverter.ToString(md5.ComputeHash(UTF8Encoding.Default.GetBytes(ConvertString)), 4, 8);
+       t2 = t2.Replace(&quot;-&quot;, &quot;&quot;);
+       return t2;
+   }</code></pre><p>Сд 32λ MD5<br>public static string GetStrMd5_32X(string ConvertString) //32λСд<br>        {<br>            MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider();<br>            string t2 = BitConverter.ToString(md5.ComputeHash(UTF8Encoding.Default.GetBytes(ConvertString)));<br>            t2 = t2.Replace(“-“, “”);<br>            return t2.ToLower();<br>        }</p>
+<p>��д32λ MD5<br> /// <summary><br>        /// ��д32λ MD5<br>        /// </summary><br>        /// <param name="ConvertString"></param><br>        /// <returns></returns><br>        public static string GetStrMd5_32D(string ConvertString)<br>        {<br>            //MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider();<br>            //string t2 = BitConverter.ToString(md5.ComputeHash(UTF8Encoding.Default.GetBytes(ConvertString)));<br>            //t2 = t2.Replace(“-“, “”);<br>            //  return t2</p>
+<pre><code>    MD5 md5 = new MD5CryptoServiceProvider();
+    byte[] bytes = System.Text.Encoding.UTF8.GetBytes(ConvertString);
+    bytes = md5.ComputeHash(bytes);
+    md5.Clear();
+    string ret = &quot;&quot;;
+    for (int i = 0; i &lt; bytes.Length; i++)
+    {
+        ret += Convert.ToString(bytes[i], 16).PadLeft(2, &apos;0&apos;);
+    }
+    return ret.PadLeft(32, &apos;0&apos;).ToUpper();
+
+    ;
+}</code></pre>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">c#�ʼ�</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2020/08/10/MD5/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-http请求" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/08/10/http%E8%AF%B7%E6%B1%82/">http请求</a>
+    </h1>
+  
+
+        
+        <a href="/2020/08/10/http%E8%AF%B7%E6%B1%82/" class="archive-article-date">
+  	<time datetime="2020-08-10T13:35:54.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-08-10</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>1��RestClient������ʽ��ѡ��Method  ����Ϊ post�� get��delete��update �ȵ�</p>
+<pre><code>����using RestSharp; 
+
+ /// &lt;summary&gt;
+   ///  ����ʽ
+   /// &lt;/summary&gt;
+   /// &lt;param name=&quot;url&quot;&gt;�����̨��ַ&lt;/param&gt;
+   /// &lt;returns&gt;&lt;/returns&gt;
+   public static IRestResponse GetHttpData(string url, string token, Method method,  Dictionary&lt;string, object&gt; dic = null, bool headers = false)
+   {
+       var client = new RestClient(url);
+       var request = new RestRequest(method);
+       request.AddHeader(&quot;token&quot;, token);
+       if (!headers)
+           request.AddHeader(&quot;Content-Type&quot;, &quot;application/json&quot;);
+       else
+           request.AddHeader(&quot;Content-Type&quot;, &quot;content-type=multipart/form-data&quot;);
+
+       request.AddParameter(&quot;undefined&quot;, JsonConvert.SerializeObject(dic), ParameterType.RequestBody);
+       IRestResponse response = client.Execute(request);
+       return response;
+   }</code></pre><p>2��HttpWebRequest</p>
+<p>Post��<br>        /// <summary><br>        /// ָ��Post��ַʹ��Get ��ʽ��ȡȫ���ַ���<br>        /// </summary><br>        /// <param name="url">�����̨��ַ</param><br>        /// <returns></returns><br>        public static string Post(string url, Dictionary&lt;string, string&gt; dic)<br>        {<br>            string result = “”;<br>            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);<br>            req.Method = “POST”;<br>            req.Timeout = 90000;<br>            req.ContentType = “application/x-www-form-urlencoded”;<br>            #region ����Post ����<br>            StringBuilder builder = new StringBuilder();<br>            int i = 0;<br>            foreach (var item in dic)<br>            {<br>                if (i &gt; 0)<br>                    builder.Append(“&amp;”);<br>                builder.AppendFormat(“{0}={1}”, item.Key, item.Value);<br>                i++;<br>            }<br>            byte[] data = Encoding.UTF8.GetBytes(builder.ToString());<br>            req.ContentLength = data.Length;<br>            req.ServicePoint.Expect100Continue = false;<br>            using (Stream reqStream = req.GetRequestStream())<br>            {<br>                reqStream.Write(data, 0, data.Length);<br>                reqStream.Close();<br>            }<br>            #endregion<br>            HttpWebResponse resp = (HttpWebResponse)req.GetResponse();<br>            Stream stream = resp.GetResponseStream();<br>            //��ȡ��Ӧ����<br>            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))<br>            {<br>                result = reader.ReadToEnd();<br>            }<br>            return result;<br>        }<br>   get<br>        /// <summary><br>        /// ָ��Post��ַʹ��Get ��ʽ��ȡȫ���ַ���<br>        /// </summary><br>        /// <param name="url">�����̨��ַ</param><br>        /// <returns></returns><br>        public static string HttpGet(string Url, string postDataStr)<br>        {<br>            try<br>            {<br>                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(Url + (postDataStr == “” ? “” : “?”) + postDataStr);<br>                request.Method = “GET”;<br>                request.ContentType = “text/html;charset=UTF-8”;<br>                request.Timeout = 10000;<br>                HttpWebResponse response = (HttpWebResponse)request.GetResponse();<br>                Stream myResponseStream = response.GetResponseStream();<br>                StreamReader myStreamReader = new StreamReader(myResponseStream, Encoding.UTF8);<br>                string retString = myStreamReader.ReadToEnd();<br>                myStreamReader.Close();<br>                myResponseStream.Close();<br>                return retString;<br>            }<br>            catch (Exception ex)<br>            {<br>                return null;<br>            }<br>        }</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">c#�ʼ�</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2020/08/10/http%E8%AF%B7%E6%B1%82/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-c-后台截取url参数" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/08/10/c-%E5%90%8E%E5%8F%B0%E6%88%AA%E5%8F%96url%E5%8F%82%E6%95%B0/">c# 后台截取url参数</a>
+    </h1>
+  
+
+        
+        <a href="/2020/08/10/c-%E5%90%8E%E5%8F%B0%E6%88%AA%E5%8F%96url%E5%8F%82%E6%95%B0/" class="archive-article-date">
+  	<time datetime="2020-08-10T13:33:30.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-08-10</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <pre><code>        /// &lt;summary&gt;
+/// ��ȡurl�ַ������������ز���ֵ�ַ���
+/// &lt;/summary&gt;
+/// &lt;param name=&quot;name&quot;&gt;��������&lt;/param&gt;
+/// &lt;param name=&quot;url&quot;&gt;url�ַ���&lt;/param&gt;
+/// &lt;returns&gt;&lt;/returns&gt;
+public string GetQueryString(string name,string url)
+{          
+    System.Text.RegularExpressions.Regex re = new System.Text.RegularExpressions.Regex(@&quot;(^|&amp;)?(\w+)=([^&amp;]+)(&amp;|$)?&quot;, System.Text.RegularExpressions.RegexOptions.Compiled);
+    System.Text.RegularExpressions.MatchCollection mc = re.Matches(url);
+    foreach (System.Text.RegularExpressions.Match m in mc)
+    {
+        if (m.Result(&quot;$2&quot;).Equals(name))
+        {
+            return m.Result(&quot;$3&quot;);
+        }               
+    }
+    return &quot;&quot;;
+}</code></pre>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">c#�ʼ�</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2020/08/10/c-%E5%90%8E%E5%8F%B0%E6%88%AA%E5%8F%96url%E5%8F%82%E6%95%B0/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-管理心理学第一章" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -390,6 +1188,18 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
             <input type="checkbox" q-on="click:toggleTag(e)" q-attr="checked:showTags">
           </label>
           <ul class="article-tag-list" q-show="showTags">
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">c#�ʼ�</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">C#�ʼ�</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">C#b笔记</a>
+              </li>
             
             <div class="clearfix"></div>
           </ul>
